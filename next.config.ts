@@ -21,6 +21,21 @@ const nextConfig: NextConfig = {
   },
   output: 'standalone',
   transpilePackages: ['motion'],
+  async rewrites() {
+    const backendUrl = process.env.SPRING_BOOT_BACKEND_URL || 'http://localhost:8080';
+    return {
+      beforeFiles: [
+        {
+          source: '/api/secrets/:path*',
+          destination: `${backendUrl}/api/secrets/:path*`,
+        },
+        {
+          source: '/api/secrets',
+          destination: `${backendUrl}/api/secrets`,
+        },
+      ],
+    };
+  },
   webpack: (config, {dev}) => {
     // HMR is disabled in AI Studio via DISABLE_HMR env var.
     // Do not modifyâfile watching is disabled to prevent flickering during agent edits.

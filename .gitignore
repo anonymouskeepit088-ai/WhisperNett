@@ -6,3 +6,9 @@ coverage/
 .env*
 !.env.example
 push-to-github.bat
+
+# Java / Maven
+**/target/
+*.class
+.idea/
+*.iml
