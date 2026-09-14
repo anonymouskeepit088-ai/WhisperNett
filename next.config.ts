@@ -22,7 +22,10 @@ const nextConfig: NextConfig = {
   output: 'standalone',
   transpilePackages: ['motion'],
   async rewrites() {
-    const backendUrl = process.env.SPRING_BOOT_BACKEND_URL || 'http://localhost:8080';
+    const backendUrl = process.env.SPRING_BOOT_BACKEND_URL;
+    if (!backendUrl) {
+      return [];
+    }
     return {
       beforeFiles: [
         {

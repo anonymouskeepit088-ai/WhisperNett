@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { Check, Copy, Clock, Flame, Lock, ShieldCheck, Plus, QrCode, X } from 'lucide-react';
+import { Check, Copy, Clock, Flame, Lock, ShieldCheck, Plus, QrCode, X, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
 import Header from '@/components/Header';
 import QRCode from 'react-qr-code';
@@ -16,6 +16,7 @@ export default function Home() {
   const [copiedToken, setCopiedToken] = useState(false);
   const [timeLeft, setTimeLeft] = useState('');
   const [showQR, setShowQR] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!result) return;
@@ -46,6 +47,7 @@ export default function Home() {
   const handleEncrypt = async () => {
     if (!secret) return;
     setLoading(true);
+    setError(null);
     try {
       const res = await fetch('/api/secrets', {
         method: 'POST',
@@ -53,7 +55,7 @@ export default function Home() {
         body: JSON.stringify({ secret, expiration, passphrase, burnOnRead })
       });
       const data = await res.json();
-      if (data.id) {
+      if (res.ok && data.id) {
         setResult(data);
         try {
           const historyItem = {
@@ -69,9 +71,12 @@ export default function Home() {
         } catch (err) {
           console.error('Failed to save history', err);
         }
+      } else {
+        setError(data.error || 'Failed to encrypt secret and generate link');
       }
     } catch (e) {
       console.error(e);
+      setError('Unable to reach server to encrypt secret. Please check your connection.');
     }
     setLoading(false);
   };
@@ -83,10 +88,11 @@ export default function Home() {
     setBurnOnRead(false);
     setResult(null);
     setShowQR(false);
+    setError(null);
   };
 
-  const linkUrl = result ? `${window.location.origin}/secret/${result.id}` : '';
-  const displayLinkUrl = result ? `whispernet.io/secret/${result.id.slice(0, 8)}...` : '';
+  const linkUrl = result && typeof window !== 'undefined' ? `${window.location.origin}/secret/${result.id}` : '';
+  const displayLinkUrl = result && typeof window !== 'undefined' ? `${window.location.host}/secret/${result.id.slice(0, 8)}...` : '';
 
   const copyToClipboard = (text: string, type: 'link' | 'token') => {
     navigator.clipboard.writeText(text);
@@ -177,6 +183,13 @@ export default function Home() {
                   </div>
                 </label>
               </div>
+
+              {error && (
+                <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-3 text-red-400 text-sm flex items-center gap-2 shrink-0">
+                  <AlertTriangle className="w-4 h-4 shrink-0" />
+                  <span>{error}</span>
+                </div>
+              )}
 
               <button
                 onClick={handleEncrypt}
