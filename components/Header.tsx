@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Menu, X, Clock, Info, Shield, Key, Flame, Trash2, PauseCircle, PlayCircle } from 'lucide-react';
+import { Menu, X, Clock, Info, Shield, Key, Flame, Trash2, PauseCircle, PlayCircle, Download, Smartphone, Monitor, ArrowDownToLine } from 'lucide-react';
 
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -13,10 +13,67 @@ export default function Header() {
   const [origin, setOrigin] = useState('');
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [isInstallModalOpen, setIsInstallModalOpen] = useState(false);
+  const [isInstalled, setIsInstalled] = useState(false);
+  const [downloadedShortcut, setDownloadedShortcut] = useState(false);
 
   useEffect(() => {
     setOrigin(window.location.origin);
+
+    const handleBeforeInstall = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+
+    const handleAppInstalled = () => {
+      setIsInstalled(true);
+      setDeferredPrompt(null);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstall);
+    window.addEventListener('appinstalled', handleAppInstalled);
+
+    if (window.matchMedia('(display-mode: standalone)').matches) {
+      setIsInstalled(true);
+    }
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
+      window.removeEventListener('appinstalled', handleAppInstalled);
+    };
   }, []);
+
+  const handleDownloadApp = async () => {
+    if (deferredPrompt) {
+      try {
+        await deferredPrompt.prompt();
+        const choice = await deferredPrompt.userChoice;
+        if (choice && choice.outcome === 'accepted') {
+          setIsInstalled(true);
+          setDeferredPrompt(null);
+          return;
+        }
+      } catch (err) {
+        console.error('Install prompt error', err);
+      }
+    }
+    setIsInstallModalOpen(true);
+  };
+
+  const downloadDesktopShortcut = () => {
+    const originUrl = window.location.origin;
+    const shortcutContent = `[InternetShortcut]\r\nURL=${originUrl}\r\nIconIndex=0\r\n`;
+    const blob = new Blob([shortcutContent], { type: 'application/octet-stream' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'WhisperNet.url';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setDownloadedShortcut(true);
+    setTimeout(() => setDownloadedShortcut(false), 3000);
+  };
 
   useEffect(() => {
     if (isHistoryOpen) {
@@ -87,12 +144,16 @@ export default function Header() {
         <nav className="hidden md:flex gap-8 text-sm font-medium text-slate-300 absolute left-1/2 -translate-x-1/2">
           <Link href="/" className="hover:text-cyan-400 transition">Secure Share</Link>
           <button onClick={() => setIsAboutOpen(true)} className="hover:text-white transition">How It Works</button>
-          <Link href="#" className="hover:text-white transition">Pricing</Link>
         </nav>
 
         <div className="flex items-center gap-3">
-          <button className="hidden sm:block bg-[#121722] border border-[#242c3d] hover:bg-[#1a2333] hover:border-slate-600 text-white px-5 py-2 rounded-lg text-sm font-medium transition shadow-sm">
-            Download
+          <button 
+            onClick={handleDownloadApp}
+            className="hidden sm:flex items-center gap-2 bg-[#121722] border border-[#242c3d] hover:bg-[#1a2333] hover:border-cyan-500/50 text-white px-4 py-2 rounded-lg text-sm font-medium transition shadow-sm group"
+            title="Download and install WhisperNet app"
+          >
+            <Download className="w-4 h-4 text-cyan-400 group-hover:scale-110 transition-transform" />
+            <span>{isInstalled ? 'App Installed' : 'Download App'}</span>
           </button>
           <div className="relative">
             <button 
@@ -105,8 +166,14 @@ export default function Header() {
             {isMenuOpen && (
               <div className="absolute right-0 mt-3 w-56 bg-[#121722] border border-[#242c3d] rounded-xl shadow-2xl overflow-hidden z-40 animate-in slide-in-from-top-2 fade-in duration-200">
                 <button 
-                  onClick={() => { setIsHistoryOpen(true); setIsMenuOpen(false); }} 
+                  onClick={() => { handleDownloadApp(); setIsMenuOpen(false); }} 
                   className="w-full text-left px-4 py-3.5 flex items-center gap-3 hover:bg-[#1a2333] text-slate-200 transition font-medium text-sm"
+                >
+                  <Download className="w-4 h-4 text-cyan-400" /> {isInstalled ? 'App Installed' : 'Download Web App'}
+                </button>
+                <button 
+                  onClick={() => { setIsHistoryOpen(true); setIsMenuOpen(false); }} 
+                  className="w-full text-left px-4 py-3.5 flex items-center gap-3 hover:bg-[#1a2333] text-slate-200 transition font-medium text-sm border-t border-[#242c3d]"
                 >
                   <Clock className="w-4 h-4 text-cyan-400" /> My Secrets History
                 </button>
@@ -282,6 +349,82 @@ export default function Header() {
             </div>
             <div className="p-4 border-t border-[#242c3d] bg-[#0a0f18] text-center">
               <span className="text-slate-500 text-sm font-medium">Version 1.0.0 &bull; Fast, Hard & Secure by Design</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Download / Install App Modal */}
+      {isInstallModalOpen && (
+        <div className="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-[#121722] border border-[#242c3d] rounded-2xl w-full max-w-lg shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between p-5 md:px-6 border-b border-[#242c3d]">
+              <div className="flex items-center gap-3">
+                <div className="text-cyan-400 bg-cyan-500/10 p-2 rounded-xl">
+                  <Download className="w-5 h-5" />
+                </div>
+                <h2 className="text-xl font-bold text-white tracking-tight">Download WhisperNet App</h2>
+              </div>
+              <button 
+                onClick={() => setIsInstallModalOpen(false)} 
+                className="text-slate-400 hover:text-white transition bg-slate-800/50 hover:bg-slate-800 p-1.5 rounded-lg"
+              >
+                <X className="w-5 h-5"/>
+              </button>
+            </div>
+
+            <div className="p-6 space-y-6 text-[15px]">
+              <p className="text-slate-300 leading-relaxed">
+                Download WhisperNet directly to your PC, iPhone, or Android device for rapid one-click secret creation and offline cryptographic access.
+              </p>
+
+              <div className="space-y-3">
+                {deferredPrompt ? (
+                  <button 
+                    onClick={handleDownloadApp}
+                    className="w-full bg-cyan-400 hover:bg-cyan-300 text-black font-bold py-3.5 px-4 rounded-xl flex items-center justify-center gap-2.5 transition shadow-[0_0_20px_rgba(34,211,238,0.25)]"
+                  >
+                    <Download className="w-5 h-5" /> Install App to Device Now
+                  </button>
+                ) : (
+                  <button 
+                    onClick={downloadDesktopShortcut}
+                    className="w-full bg-cyan-400 hover:bg-cyan-300 text-black font-bold py-3.5 px-4 rounded-xl flex items-center justify-center gap-2.5 transition shadow-[0_0_20px_rgba(34,211,238,0.25)]"
+                  >
+                    <ArrowDownToLine className="w-5 h-5" />
+                    {downloadedShortcut ? '✓ App Shortcut Saved to Downloads!' : 'Download Web App Shortcut (.url)'}
+                  </button>
+                )}
+              </div>
+
+              <div className="space-y-3 pt-1">
+                <span className="text-xs uppercase font-semibold text-slate-400 tracking-wider block">How to install on other devices</span>
+                
+                <div className="bg-[#0a0f18] border border-[#242c3d] rounded-xl p-4 flex items-start gap-3.5">
+                  <Monitor className="w-5 h-5 text-cyan-400 shrink-0 mt-0.5" />
+                  <div className="text-sm">
+                    <strong className="text-white block mb-0.5">Desktop (Chrome & Edge)</strong>
+                    <span className="text-slate-400">Click the install icon (<span className="text-cyan-400 font-mono">⤓</span> or <span className="text-cyan-400 font-mono">⊕</span>) in your browser address bar to install as a native desktop window.</span>
+                  </div>
+                </div>
+
+                <div className="bg-[#0a0f18] border border-[#242c3d] rounded-xl p-4 flex items-start gap-3.5">
+                  <Smartphone className="w-5 h-5 text-cyan-400 shrink-0 mt-0.5" />
+                  <div className="text-sm">
+                    <strong className="text-white block mb-0.5">iPhone & Android</strong>
+                    <span className="text-slate-400">On iPhone, tap <strong>Share</strong> &rarr; <strong>&quot;Add to Home Screen&quot;</strong>. On Android, tap menu (<strong>⋮</strong>) &rarr; <strong>&quot;Install app&quot;</strong>.</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 border-t border-[#242c3d] bg-[#0a0f18] flex justify-end">
+              <button 
+                onClick={() => setIsInstallModalOpen(false)}
+                className="px-5 py-2 text-sm font-medium text-slate-300 hover:text-white bg-[#1a2333] hover:bg-[#242c3d] rounded-lg transition"
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>

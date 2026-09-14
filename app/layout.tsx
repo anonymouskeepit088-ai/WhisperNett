@@ -7,6 +7,12 @@ export const metadata: Metadata = {
   icons: {
     icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="%2322d3ee" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12l5.25 5 2.625-3 2.625 3 2.625-3 2.625 3 5.25-5"/></svg>',
   },
+  manifest: '/manifest.webmanifest',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'WhisperNet',
+  },
   openGraph: {
     title: 'WhisperNet | Secure Secret Share',
     description: 'Encrypt, share, and self-destruct sensitive data using military-grade AES-256-GCM encryption.',
