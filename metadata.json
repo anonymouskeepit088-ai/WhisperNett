@@ -1,0 +1,6 @@
+{
+  "name": "WhisperNet - Secure Secret Share",
+  "description": "Encrypt, share, and self-destruct sensitive data with military grade AES-256-GCM cryptography.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
